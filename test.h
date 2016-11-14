@@ -47,6 +47,7 @@ enum ESHIFT
    SHIFT_CURRENT = 0,
    SHIFT_LAST_ONE = 1,
    SHIFT_LAST_TWO = 2,
+   SHIFT_LAST_THRID = 3,
 };
 
 enum ETIMERANGE
@@ -60,6 +61,22 @@ enum ECCISTATUS
 {
    STATUS_CCI_LONG = 1,
    STATUS_CCI_SHORT = 2,
+};
+
+enum EMACD2CSTATUS
+{
+   STATUS_MACD2C_V1_UP = 1,
+   STATUS_MACD2C_V1_DOWN = 2,
+   STATUS_MACD2C_ABOVE_YL = 3,
+   STATUS_MACD2C_BELOW_YL = 4,
+};
+
+enum EMACD2CMODE
+{
+   MODE_MACD2C_BL = 0,
+   MODE_MACD2C_WAVE = 1,
+   MODE_MACD2C_POSITIVE = 2,
+   MODE_MACD2C_NEGATIVE = 3,
 };
 
 enum EINDICATORSTATUS
@@ -136,60 +153,61 @@ public:
 
 class CStatusH4 : public CStatus
 {
-private:
-   double m_adx_pdi;
-   double m_adx_ndi;
-   double m_adx_sth;
 public:
    CStatusH4(string s);
 };
 
 class CStatusH1 : public CStatus
 {
-private:
-   double m_adx_pdi;
-   double m_adx_ndi;
-   double m_adx_sth;
 public:
    CStatusH1(string s);
 };
 
 class CStatusM30 : public CStatus
 {
-private:
-   double m_adx_pdi;
-   double m_adx_ndi;
-   double m_adx_sth;
 public:
    CStatusM30(string s);
 };
 
 class CStatusM15 : public CStatus
 {
-private:
-   double m_adx_pdi;
-   double m_adx_ndi;
-   double m_adx_sth;
 public:
    CStatusM15(string s);
 };
 
 class CStatusM5 : public CStatus
 {
-private:
-   double m_adx_pdi;
-   double m_adx_ndi;
-   double m_adx_sth;
 public:
    CStatusM5(string s);
 };
 
 class CStatusM3 : public CStatus
 {
-private:
-   double m_adx_pdi;
-   double m_adx_ndi;
-   double m_adx_sth;
 public:
    CStatusM3(string s);
+};
+
+
+//M5V1 trading system
+class CStatusV1M30 : public CStatus
+{
+public:
+   CStatusV1M30(string s);
+   virtual int CheckADX(int& smatrix[][]);
+};
+
+class CStatusV1M15 : public CStatus
+{
+public:
+   CStatusV1M15(string s);
+   virtual int CheckADX(int& smatrix[][]);
+   virtual int CheckMACD2C(int& smatrix[][]);
+};
+
+class CStatusV1M5 : public CStatus
+{
+public:
+   CStatusV1M5(string s);
+   virtual int CheckADX(int& smatrix[][]);
+   virtual int CheckMACD2C(int& smatrix[][]);
 };
