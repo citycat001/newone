@@ -8,7 +8,7 @@
 #property version   "1.00"
 #property strict
 
-#include <test.mqh>
+#include <BetaM5V1.mqh>
 
 extern double StopLoss   =2000.0;     // SL for an opened order
 extern double TakeProfit =0.0;      // ТР for an opened order
@@ -960,11 +960,6 @@ int start()
 //      return err;
 //   }
 
-//	test = iCustom(Symb,PERIOD_M3, "MACD_2Colour", 12, 26, 9, 0, 0);
-//	test1 = iCustom(Symb,PERIOD_M3, "MACD_2Colour", 12, 26, 9, 1, 0);
-//	test2 = iCustom(Symb,PERIOD_M3, "MACD_2Colour", 12, 26, 9, 2, 0);
-//	test2 = iCustom(Symb,PERIOD_M3, "MACD_2Colour", 12, 26, 9, 3, 0);
-
 	//--------------------------------------------------------------- 6 --   // Closing orders   
 	while(true)                                  // Loop of closing orders     
 	{  
@@ -1235,6 +1230,654 @@ int GetTimeRange(int& time_range)
    return err;
 }
 
+
+//+------------------------------------------------------------------+
+//| M5V1 trading system                                              |
+//+------------------------------------------------------------------+
+//M30 status
+void CStatusV1M30::CStatusV1M30(string s)
+{
+   m_timeframe = PERIOD_M30;
+   m_symb = s;
+   m_period = 7;
+   m_apprice = PRICE_CLOSE;
+   m_bb_deviation = 2;
+   m_bbperiod = 14;
+}
+
+//M15 status
+void CStatusV1M15::CStatusV1M15(string s)
+{
+   m_timeframe = PERIOD_M15;
+   m_symb = s;
+   m_period = 7;
+   m_apprice = PRICE_CLOSE;
+   m_bb_deviation = 2;
+   m_bbperiod = 14;
+}
+
+//M5 status
+void CStatusV1M5::CStatusV1M5(string s)
+{
+   m_timeframe = PERIOD_M5;
+   m_symb = s;
+   m_period = 7;
+   m_apprice = PRICE_CLOSE;
+   m_bb_deviation = 2;
+   m_bbperiod = 14;
+}
+
+int CStatusV1M30::CheckADX(int& smatrix[][])
+{
+   int err = ERR_NO_ERROR;
+   int status = 0;
+   
+   double adx_pdi_cur = iADX(m_symb, m_timeframe, m_period, m_apprice, MODE_PLUSDI, SHIFT_CURRENT);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }
+   
+   double adx_ndi_cur = iADX(m_symb, m_timeframe, m_period, m_apprice, MODE_MINUSDI, SHIFT_CURRENT);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }
+   
+   double adx_sth_cur = iADX(m_symb, m_timeframe, m_period, m_apprice, MODE_MAIN, SHIFT_CURRENT); 
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   } 
+   
+   double adx_pdi_last = iADX(m_symb, m_timeframe, m_period, m_apprice, MODE_PLUSDI, SHIFT_LAST_ONE);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }
+   
+   double adx_ndi_last = iADX(m_symb, m_timeframe, m_period, m_apprice, MODE_MINUSDI, SHIFT_LAST_ONE);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }
+   
+   double adx_sth_last = iADX(m_symb, m_timeframe, m_period, m_apprice, MODE_MAIN, SHIFT_LAST_ONE); 
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }
+   
+   if (adx_pdi_last >= adx_ndi_last && adx_pdi_cur < adx_ndi_cur)
+   {
+      status = STATUS_CROSS_DOWN;
+      OutputDebug(StringConcatenate("ADX ", TimeFrameToString(m_timeframe), ": STATUS_CROSS_DOWN. ", " Strength ", adx_sth_cur, " +DI ", adx_pdi_cur, " -DI ", adx_ndi_cur));
+   }
+   else if (adx_pdi_last <= adx_ndi_last && adx_pdi_cur > adx_ndi_cur)
+   {
+      status = STATUS_CROSS_UP;
+      OutputDebug(StringConcatenate("ADX ", TimeFrameToString(m_timeframe), ": STATUS_CROSS_UP. ", " Strength ", adx_sth_cur, " +DI ", adx_pdi_cur, " -DI ", adx_ndi_cur));
+   }
+   else if (adx_pdi_last > adx_ndi_last && adx_pdi_cur > adx_ndi_cur)
+   {
+      status = STATUS_KEEP_UP;
+      OutputDebug(StringConcatenate("ADX ", TimeFrameToString(m_timeframe), ": STATUS_KEEP_UP. ", " Strength ", adx_sth_cur, " +DI ", adx_pdi_cur, " -DI ", adx_ndi_cur));
+   }
+   else if (adx_pdi_last < adx_ndi_last && adx_pdi_cur < adx_ndi_cur)
+   {
+      status = STATUS_KEEP_DOWN;
+      OutputDebug(StringConcatenate("ADX ", TimeFrameToString(m_timeframe), ": STATUS_KEEP_DOWN. ", " Strength ", adx_sth_cur, " +DI ", adx_pdi_cur, " -DI ", adx_ndi_cur));      
+   }
+   else
+   {
+      status = STATUS_UNKNOWN;
+      OutputDebug(StringConcatenate("ADX ", TimeFrameToString(m_timeframe), ": STATUS_UNKNOWN. ", " Strength ", adx_sth_cur, " +DI ", adx_pdi_cur, " -DI ", adx_ndi_cur));
+   }
+   
+   if (AssignValueSM(smatrix, ARRAYINDEX_ADX, status))
+      err = ERR_NO_ERROR;
+   else
+      err = ERROR_VALUEASSIGN;   
+
+   return err;   
+}
+
+int CStatusV1M15::CheckADX(int& smatrix[][])
+{
+   int err = ERR_NO_ERROR;
+   int status = 0;
+   
+   double adx_pdi = iADX(m_symb, m_timeframe, m_period, m_apprice, MODE_PLUSDI, SHIFT_CURRENT);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }
+   
+   double adx_ndi = iADX(m_symb, m_timeframe, m_period, m_apprice, MODE_MINUSDI, SHIFT_CURRENT);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }
+   
+   double adx_sth = iADX(m_symb, m_timeframe, m_period, m_apprice, MODE_MAIN, SHIFT_CURRENT); 
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }  
+   
+   if (adx_pdi >= 25 && adx_ndi < 20)
+   {
+      status = STATUS_CROSS_UP;
+      OutputDebug(StringConcatenate("ADX ", TimeFrameToString(m_timeframe), ": STATUS_CROSS_UP. ", " Strength ", adx_sth, " +DI ", adx_pdi, " -DI ", adx_ndi));
+   }  
+   else if (adx_ndi >= 25 && adx_pdi < 20)
+   {
+      status = STATUS_CROSS_DOWN;
+      OutputDebug(StringConcatenate("ADX ", TimeFrameToString(m_timeframe), ": STATUS_CROSS_UP. ", " Strength ", adx_sth, " +DI ", adx_pdi, " -DI ", adx_ndi));
+   }
+   else
+   {
+      status = STATUS_UNKNOWN;
+      OutputDebug(StringConcatenate("ADX ", TimeFrameToString(m_timeframe), ": STATUS_UNKNOWN. ", " Strength ", adx_sth, " +DI ", adx_pdi, " -DI ", adx_ndi));
+   }
+   
+   if (AssignValueSM(smatrix, ARRAYINDEX_ADX, status))
+      err = ERR_NO_ERROR;
+   else
+      err = ERROR_VALUEASSIGN;   
+
+   return err;
+}
+
+int CStatusV1M5::CheckADX(int& smatrix[][]) //has the same code as V1M15
+{
+   int err = ERR_NO_ERROR;
+   int status = 0;
+   
+   double adx_pdi = iADX(m_symb, m_timeframe, m_period, m_apprice, MODE_PLUSDI, SHIFT_CURRENT);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }
+   
+   double adx_ndi = iADX(m_symb, m_timeframe, m_period, m_apprice, MODE_MINUSDI, SHIFT_CURRENT);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }
+   
+   double adx_sth = iADX(m_symb, m_timeframe, m_period, m_apprice, MODE_MAIN, SHIFT_CURRENT); 
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }  
+   
+   if (adx_pdi >= 25 && adx_ndi < 20)
+   {
+      status = STATUS_CROSS_UP;
+      OutputDebug(StringConcatenate("ADX ", TimeFrameToString(m_timeframe), ": STATUS_CROSS_UP. ", " Strength ", adx_sth, " +DI ", adx_pdi, " -DI ", adx_ndi));
+   }  
+   else if (adx_ndi >= 25 && adx_pdi < 20)
+   {
+      status = STATUS_CROSS_DOWN;
+      OutputDebug(StringConcatenate("ADX ", TimeFrameToString(m_timeframe), ": STATUS_CROSS_UP. ", " Strength ", adx_sth, " +DI ", adx_pdi, " -DI ", adx_ndi));
+   }
+   else
+   {
+      status = STATUS_UNKNOWN;
+      OutputDebug(StringConcatenate("ADX ", TimeFrameToString(m_timeframe), ": STATUS_UNKNOWN. ", " Strength ", adx_sth, " +DI ", adx_pdi, " -DI ", adx_ndi));
+   }
+   
+   if (AssignValueSM(smatrix, ARRAYINDEX_ADX, status))
+      err = ERR_NO_ERROR;
+   else
+      err = ERROR_VALUEASSIGN;   
+
+   return err;
+}
+
+int CStatusV1M15::CheckMACD2C(int& smatrix[][])
+{
+   int err = ERR_NO_ERROR;
+   int status = 0;
+   
+	double macd2c_wave_cur = iCustom(m_symb,m_timeframe, "MACD_2Colour", 12, 26, 9, MODE_MACD2C_WAVE, SHIFT_CURRENT);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }  
+   
+	double macd2c_pos_cur = iCustom(m_symb,m_timeframe, "MACD_2Colour", 12, 26, 9, MODE_MACD2C_POSITIVE, SHIFT_CURRENT);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }  
+   
+	double macd2c_neg_cur = iCustom(m_symb,m_timeframe, "MACD_2Colour", 12, 26, 9, MODE_MACD2C_NEGATIVE, SHIFT_CURRENT);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   } 
+   
+   if (status == 0)
+   {
+      if ((macd2c_pos_cur > 0 && macd2c_neg_cur == 0 && macd2c_pos_cur < macd2c_wave_cur)
+         || (macd2c_pos_cur == 0 && macd2c_neg_cur <= 0 && macd2c_neg_cur < macd2c_wave_cur))
+         status = STATUS_MACD2C_BELOW_YL;
+      
+      if ((macd2c_pos_cur == 0 && macd2c_neg_cur < 0 && macd2c_neg_cur > macd2c_wave_cur)
+         || (macd2c_pos_cur >= 0 && macd2c_neg_cur == 0 && macd2c_pos_cur > macd2c_wave_cur))
+         status = STATUS_MACD2C_ABOVE_YL;
+   }
+
+   OutputDebug(StringConcatenate("MACD_2C ", TimeFrameToString(m_timeframe), ": Status ", status,
+         "; macd2c_wave_cur ", macd2c_wave_cur, "; macd2c_pos_cur ", macd2c_pos_cur, "; macd2c_neg_cur ", macd2c_neg_cur, "; macd2c_wave_last "));
+            
+   if (AssignValueSM(smatrix, ARRAYINDEX_MACD2C, status))
+      err = ERR_NO_ERROR;
+   else
+      err = ERROR_VALUEASSIGN;   
+   return err;
+}
+
+int CStatusV1M5::CheckMACD2C(int& smatrix[][])
+{
+   int err = ERR_NO_ERROR;
+   int status = 0;
+   
+	double macd2c_wave_cur = iCustom(m_symb,m_timeframe, "MACD_2Colour", 12, 26, 9, MODE_MACD2C_WAVE, SHIFT_CURRENT);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }  
+   
+	double macd2c_pos_cur = iCustom(m_symb,m_timeframe, "MACD_2Colour", 12, 26, 9, MODE_MACD2C_POSITIVE, SHIFT_CURRENT);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }  
+   
+	double macd2c_neg_cur = iCustom(m_symb,m_timeframe, "MACD_2Colour", 12, 26, 9, MODE_MACD2C_NEGATIVE, SHIFT_CURRENT);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   } 
+
+   double macd2c_wave_last = iCustom(m_symb,m_timeframe, "MACD_2Colour", 12, 26, 9, MODE_MACD2C_WAVE, SHIFT_LAST_ONE);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   } 
+   
+	double macd2c_pos_last = iCustom(m_symb,m_timeframe, "MACD_2Colour", 12, 26, 9, MODE_MACD2C_POSITIVE, SHIFT_LAST_ONE);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }  
+   
+	double macd2c_neg_last = iCustom(m_symb,m_timeframe, "MACD_2Colour", 12, 26, 9, MODE_MACD2C_NEGATIVE, SHIFT_LAST_ONE);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }  
+   
+   double macd2c_pos_llast = iCustom(m_symb,m_timeframe, "MACD_2Colour", 12, 26, 9, MODE_MACD2C_POSITIVE, SHIFT_LAST_TWO);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }  
+   
+	double macd2c_neg_llast = iCustom(m_symb,m_timeframe, "MACD_2Colour", 12, 26, 9, MODE_MACD2C_NEGATIVE, SHIFT_LAST_TWO);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   } 
+   
+   double macd2c_pos_lthird = iCustom(m_symb,m_timeframe, "MACD_2Colour", 12, 26, 9, MODE_MACD2C_POSITIVE, SHIFT_LAST_THRID);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }  
+   
+	double macd2c_neg_lthird = iCustom(m_symb,m_timeframe, "MACD_2Colour", 12, 26, 9, MODE_MACD2C_NEGATIVE, SHIFT_LAST_THRID);
+   if ((err = GetLastError()) != ERR_NO_ERROR)
+   {
+      return err;
+   }
+   
+   if ((((macd2c_pos_llast > 0 && macd2c_neg_llast == 0) && (macd2c_pos_last == 0 && macd2c_neg_last < 0))
+      || ((macd2c_pos_lthird > 0 && macd2c_neg_lthird == 0) && (macd2c_pos_llast == 0 && macd2c_neg_llast == 0) && (macd2c_pos_last == 0 && macd2c_neg_last < 0))) 
+      && (macd2c_wave_last > macd2c_neg_last))
+   {
+      status = STATUS_MACD2C_V1_DOWN;
+   }
+   
+   if ((((macd2c_pos_llast == 0 && macd2c_neg_llast < 0) && (macd2c_pos_last > 0 && macd2c_neg_last == 0))
+      || ((macd2c_pos_lthird == 0 && macd2c_neg_lthird < 0) && (macd2c_pos_llast == 0 && macd2c_neg_llast == 0) && (macd2c_pos_last > 0 && macd2c_neg_last == 0))) 
+      && (macd2c_wave_last < macd2c_pos_last))
+   {
+      status = STATUS_MACD2C_V1_UP;
+   }
+   
+   if (status == 0)
+   {
+      if (macd2c_pos_last > 0 && macd2c_neg_last == 0 && macd2c_pos_last < macd2c_wave_last)
+         status = STATUS_MACD2C_BELOW_YL;
+      
+      if (macd2c_pos_last == 0 && macd2c_neg_last < 0 && macd2c_neg_last > macd2c_wave_last)
+         status = STATUS_MACD2C_ABOVE_YL;
+   }
+
+   OutputDebug(StringConcatenate("MACD_2C ", TimeFrameToString(m_timeframe), ": Status ", status,
+         "; macd2c_wave_cur ", macd2c_wave_cur, "; macd2c_pos_cur ", macd2c_pos_cur, "; macd2c_neg_cur ", macd2c_neg_cur, "; macd2c_wave_last ", macd2c_wave_last,
+         "; macd2c_pos_last ", macd2c_pos_last, "; macd2c_neg_last ", macd2c_neg_last, "; macd2c_pos_llast ", macd2c_pos_llast, "; macd2c_neg_llast ", macd2c_neg_llast,
+         "; macd2c_pos_lthird ", macd2c_pos_lthird, "; macd2c_neg_lthird ", macd2c_neg_lthird));
+            
+   if (AssignValueSM(smatrix, ARRAYINDEX_MACD2C, status))
+      err = ERR_NO_ERROR;
+   else
+      err = ERROR_VALUEASSIGN;   
+   return err;
+}
+
+int DecideM5V1(int& smatrix[][], string symb, int ordertotal, int& result)
+{
+   int err = ERR_NO_ERROR;
+   double gradient_cur = 0.0;
+   double gradient_old = 0.0;
+   double gradient_sec = 0.0;  
+   int i = 0;
+   
+   for (i = STATUS_OBJARR_SIZE - 2; i > 1; i--) //only check M30, M15, M5, leave H4, H1, M3 unchecked
+   {
+      //no order opened
+      err = g_pstatus[i].CheckEMA(smatrix);
+      if (err != ERR_NO_ERROR)
+         return err;  
+         
+      err = g_pstatus[i].CheckMACDH(smatrix, gradient_sec, gradient_old, gradient_cur);
+      if (err != ERR_NO_ERROR)
+         return err;    
+      
+      err = g_pstatus[i].CheckADX(smatrix);
+      if (err != ERR_NO_ERROR)
+         return err;
+      
+      err = g_pstatus[i].CheckMACD2C(smatrix);
+      if (err != ERR_NO_ERROR)
+         return err;  
+   }
+   
+   if (ordertotal == 0)
+   { 
+      //bull, buy
+      if ((smatrix[ARRAYINDEX_M5][ARRAYINDEX_EMA] == STATUS_CROSS_UP || smatrix[ARRAYINDEX_M5][ARRAYINDEX_EMA] == STATUS_KEEP_UP)
+         && (smatrix[ARRAYINDEX_M5][ARRAYINDEX_MACDH] == STATUS_KEEP_UP || smatrix[ARRAYINDEX_M5][ARRAYINDEX_MACDH] == STATUS_CROSS_UP)
+         && smatrix[ARRAYINDEX_M5][ARRAYINDEX_ADX] == STATUS_CROSS_UP
+         && smatrix[ARRAYINDEX_M5][ARRAYINDEX_MACD2C] == STATUS_MACD2C_V1_UP
+         && (smatrix[ARRAYINDEX_M15][ARRAYINDEX_EMA] == STATUS_CROSS_UP || smatrix[ARRAYINDEX_M15][ARRAYINDEX_EMA] == STATUS_KEEP_UP || smatrix[ARRAYINDEX_M15][ARRAYINDEX_EMA] == STATUS_CLOSE)
+         && (smatrix[ARRAYINDEX_M15][ARRAYINDEX_MACDH] == STATUS_KEEP_UP || smatrix[ARRAYINDEX_M15][ARRAYINDEX_MACDH] == STATUS_CROSS_UP)
+         && smatrix[ARRAYINDEX_M15][ARRAYINDEX_ADX] == STATUS_CROSS_UP
+         && smatrix[ARRAYINDEX_M15][ARRAYINDEX_MACD2C] == STATUS_MACD2C_ABOVE_YL
+         && (smatrix[ARRAYINDEX_M30][ARRAYINDEX_MACDH] == STATUS_KEEP_UP || smatrix[ARRAYINDEX_M30][ARRAYINDEX_MACDH] == STATUS_CROSS_UP || smatrix[ARRAYINDEX_M30][ARRAYINDEX_MACDH] == STATUS_CLOSE)
+         && (smatrix[ARRAYINDEX_M30][ARRAYINDEX_ADX] == STATUS_CROSS_UP || smatrix[ARRAYINDEX_M30][ARRAYINDEX_ADX] == STATUS_KEEP_UP))
+         {
+            result = ORDER_OPEN_BUY; 
+            OutputDebug(StringConcatenate("Order decision: ORDER_OPEN_BUY. EMA cross enter."));
+         }
+      
+      //bear, sell   
+      if ((smatrix[ARRAYINDEX_M5][ARRAYINDEX_EMA] == STATUS_CROSS_DOWN || smatrix[ARRAYINDEX_M5][ARRAYINDEX_EMA] == STATUS_KEEP_DOWN)
+         && (smatrix[ARRAYINDEX_M5][ARRAYINDEX_MACDH] == STATUS_CROSS_DOWN || smatrix[ARRAYINDEX_M5][ARRAYINDEX_MACDH] == STATUS_KEEP_DOWN)
+         && smatrix[ARRAYINDEX_M5][ARRAYINDEX_ADX] == STATUS_CROSS_DOWN
+         && smatrix[ARRAYINDEX_M5][ARRAYINDEX_MACD2C] == STATUS_MACD2C_V1_DOWN
+         && (smatrix[ARRAYINDEX_M15][ARRAYINDEX_EMA] == STATUS_CROSS_DOWN || smatrix[ARRAYINDEX_M15][ARRAYINDEX_EMA] == STATUS_KEEP_DOWN || smatrix[ARRAYINDEX_M15][ARRAYINDEX_EMA] == STATUS_CLOSE)
+         && (smatrix[ARRAYINDEX_M15][ARRAYINDEX_MACDH] == STATUS_CROSS_DOWN || smatrix[ARRAYINDEX_M15][ARRAYINDEX_MACDH] == STATUS_KEEP_DOWN)
+         && smatrix[ARRAYINDEX_M15][ARRAYINDEX_ADX] == STATUS_CROSS_DOWN
+         && smatrix[ARRAYINDEX_M15][ARRAYINDEX_MACD2C] == STATUS_MACD2C_BELOW_YL
+         && (smatrix[ARRAYINDEX_M30][ARRAYINDEX_MACDH] == STATUS_KEEP_DOWN || smatrix[ARRAYINDEX_M30][ARRAYINDEX_MACDH] == STATUS_CROSS_DOWN || smatrix[ARRAYINDEX_M30][ARRAYINDEX_MACDH] == STATUS_CLOSE)
+         && (smatrix[ARRAYINDEX_M30][ARRAYINDEX_ADX] == STATUS_CROSS_DOWN || smatrix[ARRAYINDEX_M30][ARRAYINDEX_ADX] == STATUS_KEEP_DOWN))
+         {
+            result = ORDER_OPEN_SELL;
+            OutputDebug(StringConcatenate("Order decision: ORDER_OPEN_SELL. EMA cross enter."));
+         }         
+   }
+   else if(ordertotal == 1)
+   {
+      if ((g_ticketopenedbuy == true && smatrix[ARRAYINDEX_M5][ARRAYINDEX_MACD2C] == STATUS_MACD2C_BELOW_YL)
+         || (g_ticketopenedsell == true && smatrix[ARRAYINDEX_M5][ARRAYINDEX_MACD2C] == STATUS_MACD2C_ABOVE_YL))
+      {
+         result = ORDER_CLOSE;
+         OutputDebug(StringConcatenate("Order decision: Close. MACD2C matches M5 close condition."));
+      }
+      else
+         result = ORDER_KEEP;
+
+      //only use for debug
+      if (StopLoss != 0)
+      {
+         if ((g_Tip == OP_BUY && (Ask < g_SL))
+            || (g_Tip == OP_SELL && (Bid > g_SL)))
+         {
+            result = ORDER_CLOSE;  
+            OutputDebug(StringConcatenate("Hit stop loss, going to close this order.")); 
+         }   
+      }      
+      
+      if (TakeProfit != 0)
+      {
+         if ((g_Tip == OP_BUY && (Ask > g_TP))
+            || (g_Tip == OP_SELL && (Bid < g_TP)))
+         {
+            result = ORDER_CLOSE;
+            OutputDebug(StringConcatenate("Hit take profit, going to close this order.")); 
+         }
+      }      
+   } 
+   
+   return err;
+}
+
+int startM5V1()  
+{   
+	int Total = 0;                           // Amount of orders in a window    
+	int Tip = -1;                          // Type of selected order (B=0,S=1)   
+	int Ticket = 0;                          // Order number   
+	double Lot = 0.0;                             // Amount of lots in a selected order   
+	double Lts = 0.0;                             // Amount of lots in an opened order
+	double Price = 0.0;                           // Price of a selected order   
+	double SL = 0.0;                             // SL of a selected order   
+	double TP = 0.0;                              // TP за a selected order  
+	bool Ans = false;                     // Server response after closing   
+	int err = ERR_NO_ERROR;
+	int ordertotal = 0;
+	int result = ORDER_NO;
+	int status_matrix[STATUS_OBJARR_SIZE][INDICATOR_COUNT] = {0}; //record all the status of the trade windows and indicators	
+	string subject = "Test EA M5V1 order operation notification";
+	
+	//--------------------------------------------------------------- 3 --   // Preliminary processing   
+	if(Bars < Period_EMA_10)                       // Not enough bars     
+	{      
+		Print("Not enough bars in the window. EA doesn't work.");      
+		return 0;                                   // Exit start()     
+	}   
+
+	if(Work == false)                              // Critical error     
+	{      
+		Print("Critical error. EA doesn't work.");      
+		return 0;                                   // Exit start()     
+	}
+
+	//--------------------------------------------------------------- 5 --   // Trading criteria    
+   CStatusH4 sh4(Symb);
+   CStatusH1 sh1(Symb);
+   CStatusV1M30 v1sm30(Symb);
+   CStatusV1M15 v1sm15(Symb);
+   CStatusV1M5 v1sm5(Symb);
+   CStatusM3 sm3(Symb);
+	  
+   g_pstatus[ARRAYINDEX_H4] = &sh4;
+   g_pstatus[ARRAYINDEX_H1] = &sh1;
+   g_pstatus[ARRAYINDEX_M30] = &v1sm30;
+   g_pstatus[ARRAYINDEX_M15] = &v1sm15;
+   g_pstatus[ARRAYINDEX_M5] = &v1sm5;
+   g_pstatus[ARRAYINDEX_M3] = &sm3; 
+
+   err = DecideM5V1(status_matrix, Symb, g_ordertotal, result);
+   if (err != ERR_NO_ERROR)
+   {
+      Print("Critical error ", err, ". EA M5V1 doesn't work.");
+      return err;
+   }
+
+	//--------------------------------------------------------------- 6 --   // Closing orders   
+	while(true)                                  // Loop of closing orders     
+	{  
+		if (result == ORDER_CLOSE && g_ticketopenedbuy == true)//Tip == OP_BUY)                // Order Buy is opened..        
+		{                                       // and there is criterion to close         
+			Print("Attempt to close Buy ", Ticket,". Waiting for response..");         
+			RefreshRates();                        // Refresh rates         
+//			Ans=OrderClose(Ticket,Lot,Bid,2);      // Closing Buy         
+//			if (Ans==true)                         // Success :) 
+        
+			g_time = TimeCurrent(); 
+			{
+			   string tmpstr = StringConcatenate("Closed order Buy at ", g_time, ", price ", Bid, ", lots ", g_Lts);            
+				Print (tmpstr); //Ticket); 
+				SendMail(subject, tmpstr);  
+				WriteToCSV(OP_BUY, ORDER_CLOSE);
+				g_ticketopenedbuy = false;
+				g_ordertotal = 0;
+            for (int k = 0; k < 5; k++)
+            {
+               PlaySound("expert"); 
+               Sleep(1000);
+            } 
+//				Print("Closed at ", Bid);   //OrderClosePrice();   
+				break;                              // Exit closing loop           
+			}   
+
+			if (Fun_Error(GetLastError())==1)      // Processing errors            
+				continue;                           // Retrying         
+			return 0;                                // Exit start()        
+		}       
+			
+		if (result == ORDER_CLOSE && g_ticketopenedsell == true)//Tip == OP_SELL)                // Order Sell is opened..        
+		{                                       // and there is criterion to close         
+			Print("Attempt to close Sell ",Ticket,". Waiting for response..");        
+			RefreshRates();                        // Refresh rates        
+//			Ans=OrderClose(Ticket,Lot,Ask,2);      // Closing Sell         
+//			if (Ans==true)                         // Success :)   
+
+         g_time = TimeCurrent();     
+			{  
+			   string tmpstr = StringConcatenate("Closed order Sell at ", g_time, ", price ", Ask, ", lots ", g_Lts); 
+			   Print(tmpstr);  //Ticket);  
+			   SendMail(subject, tmpstr);
+			   WriteToCSV(OP_SELL, ORDER_CLOSE);  
+			   g_ticketopenedsell = false;    
+			   g_ordertotal = 0;
+            for (int k = 0; k < 5; k++)
+            {
+               PlaySound("expert"); 
+               Sleep(1000);
+            }  
+//				Print("Closed at ", Ask);         //OrderClosePrice(); 
+				break;                              // Exit closing loop           
+			}
+			
+			if (Fun_Error(GetLastError())==1)      // Processing errors           
+				continue;                           // Retrying        
+			return 0;                                // Exit start()       
+		}   
+		break;                                    // Exit while    
+	}
+
+	//--------------------------------------------------------------- 7 --   // Order value   
+   if (SetOrderValue(Lts) != 0)
+      return 0;
+
+	//--------------------------------------------------------------- 8 --   // Opening orders   
+	while(true)                                  // Orders opening loop    
+	{      
+//		if (ordertotal == 0 && result == ORDER_OPEN_BUY)              // No new orders +      
+      if (g_ticketopenedbuy == false && result == ORDER_OPEN_BUY)
+		{                                       // criterion for opening Buy        
+			RefreshRates();                        // Refresh rates       
+			SL = Bid - New_Stop(StopLoss)*Point;     // Calculating SL of opened
+         TP = Bid + New_Stop(TakeProfit)*Point;   // Calculating TP of opened       
+			Print("Attempt to open Buy. Waiting for response..");       
+//			Ticket=OrderSend(Symb,OP_BUY,Lts, Ask,2,SL,TP);//Opening Buy
+       
+         g_TP = TP;
+         g_SL = SL;
+         g_Price = Ask;
+         g_Lts = Lts;
+         g_Tip = OP_BUY;
+         g_time = TimeCurrent();
+//			if (Ticket > 0)                        // Success :) 
+			{
+			string tmpstr = StringConcatenate("Opened order Buy at ", g_time, ", price ", Ask, ", stop lost ", g_SL, ", lots ", g_Lts);
+			Print(tmpstr);   //Ticket);
+			SendMail(subject, tmpstr);
+			WriteToCSV(OP_BUY, ORDER_OPEN_BUY); 
+			g_ticketopenedbuy = true;
+			g_ordertotal = 1;
+         for (int k = 0; k < 5; k++)
+         {
+            PlaySound("news"); 
+            Sleep(1000);
+         }
+//				Print("Opened at ", Ask);           //OrderOpenPrice();
+				return 0;                             // Exit start()
+			}
+			if (Fun_Error(GetLastError())==1)      // Processing errors
+				continue;                           // Retrying
+			return 0;                                // Exit start()
+		}   
+
+//		if (ordertotal == 0 && result == ORDER_OPEN_SELL)              // No opened orders +
+		if (g_ticketopenedsell == false && result == ORDER_OPEN_SELL)
+		{
+			// criterion for opening Sell
+			RefreshRates();                        // Refresh rates
+			SL = Ask + New_Stop(StopLoss)*Point;     // Calculating SL of opened
+			TP = Ask - New_Stop(TakeProfit)*Point;   // Calculating TP of opened
+			Print("Attempt to open Sell. Waiting for response..");
+//			Ticket=OrderSend(Symb,OP_SELL,Lts,Bid,2,SL,TP);//Opening Sell
+
+         g_TP = TP;
+         g_SL = SL;
+         g_Price = Bid;
+         g_Lts = Lts;
+         g_Tip = OP_SELL;
+         g_time = TimeCurrent();
+//			if (Ticket > 0)                        // Success :)
+			{
+			string tmpstr = StringConcatenate("Opened order Sell at ", g_time, ", price ", Bid, ", stop lost ", g_SL, ", lots ", g_Lts);
+		   Print(tmpstr);
+		   SendMail(subject, tmpstr);
+		   WriteToCSV(OP_SELL, ORDER_OPEN_SELL); 
+		   g_ticketopenedsell = true;
+		   g_ordertotal = 1;
+         for (int k = 0; k < 5; k++)
+         {
+            PlaySound("news"); 
+            Sleep(1000);
+         }
+//				Print("Opened at ", Bid);           //OrderOpenPrice();
+				return 0;                             // Exit start()
+			}
+			if (Fun_Error(GetLastError())==1)      // Processing errors
+				continue;                           // Retrying
+			return 0;                                // Exit start()
+		}      
+		break;                                    // Exit while     
+	}//--------------------------------------------------------------- 9 --   
+	return 0;                                      // Exit start()  
+}
+
+
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -1286,7 +1929,8 @@ void OnTick()
    if (time_range == TIMERANGE_US)
       g_bbthreshold = 15;
       
-   start();
+//   start();
+   startM5V1();
    
 }
 //+------------------------------------------------------------------+
